@@ -1,0 +1,155 @@
+:root {
+  --bg-page: #f5f7fb;
+  --bg-card: #ffffff;
+  --bg-navbar: #111827;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --border-subtle: #e5e7eb;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+  --text-invert: #f9fafb;
+  --radius-lg: 12px;
+  --shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.16);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  
+  background:
+    radial-gradient(circle at 20% 20%, #e7f0ff 0%, transparent 55%), #f5f7fb;
+}
+
+/* top bar */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 32px;
+  background: var(--bg-navbar);
+  color: var(--text-invert);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.35);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.topbar__brand {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+/* login area */
+.login-page {
+  min-height: calc(100vh - 56px);
+  display: flex;
+  justify-content: center;
+  align-items: center;              
+  padding: 32p 16px;
+}
+
+/* login card */
+.login-card {
+  background: var(--bg-card);
+  padding: 32px 36px 36px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  width: min(440px, 95vw);
+  border: 1px solid var(--border-subtle);
+}
+
+.login-card h1 {
+  margin: 0 0 0.4rem;
+  font-size: 1.5rem;
+}
+
+.hint {
+  margin: 0 0 1.1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.hint.error {
+  color: #b91c1c;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+input[type="text"],
+input[type="password"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px #dbeafe;
+  background: #f9fafb;
+}
+
+/* button */
+button[type="submit"] {
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-top: 0.25rem;
+  transition: background 0.16s ease, transform 0.06s ease, box-shadow 0.16s ease;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
+}
+
+button[type="submit"]:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.4);
+}
+
+button[type="submit"]:active {
+  transform: translateY(0);
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.35);
+}
+
+/* error message */
+.msg {
+  margin-top: 0.75rem;
+  min-height: 1.2rem;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+
+  .login-page {
+    padding: 24px 12px;
+  }
+}

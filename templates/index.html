@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Battleship – Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  </head>
+
+  <body>
+    <!-- Top navigation bar -->
+    <header class="topbar">
+      <div class="topbar__brand">Battleship</div>
+      <div></div>
+    </header>
+
+    <main class="login-page">
+      <div class="login-card">
+        <h1>Login</h1>
+
+        {% if error_msg %}
+        <p class="hint error">{{ error_msg }}</p>
+        {% else %}
+        <p class="hint">Enter your credentials</p>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('login') }}">
+          <label for="username">Username</label>
+          <input
+            id="username"
+            name="username"
+            value="{{ username or '' }}"
+            type="text"
+            required
+          />
+
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" required />
+
+          <button type="submit">Sign in</button>
+
+          <div id="msg" class="msg"></div>
+        </form>
+      </div>
+    </main>
+  </body>
+</html>
