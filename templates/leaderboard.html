@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Battleship – Leaderboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles2.css') }}"
+    />
+  </head>
+
+  <body>
+    <header class="topbar">
+      <div class="topbar__brand">Battleship</div>
+      <div class="topbar__user">
+        {% if session.get("username") %}
+          <span>Logged in as <strong>{{ session["username"] }}</strong></span>
+          <a href="{{ url_for('game') }}" class="topbar__logout">Back to game</a>
+        {% else %}
+          <a href="{{ url_for('login') }}" class="topbar__logout">Log in</a>
+        {% endif %}
+      </div>
+    </header>
+
+    <main class="page">
+      <div class="card" style="width: 100%; max-width: 700px;">
+        <div class="card__header">
+          <h3>Leaderboard</h3>
+          
+        </div>
+
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-container">
+              {% for category, msg in messages %}
+                <p
+                  class="flash-message
+                         {% if category == 'error' %}flash-error{% else %}flash-success{% endif %}"
+                >
+                  {{ msg }}
+                </p>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <div class="table-wrapper">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Player</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for player in players %}
+                <tr>
+                  <td>{{ loop.index }}</td>
+                  <td>{{ player.username }}</td>
+                  <td>{{ player.score }}</td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="3" class="table__empty">
+                    No players yet. Be the first to register!
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

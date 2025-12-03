@@ -62,7 +62,7 @@ def login():
             session["user_id"] = player.id 
             session["username"] = player.username 
 
-            flash("Loggee in successfully!", "success")
+    
             return redirect(url_for("game"))
 
         else: 
@@ -95,7 +95,6 @@ def register():
         db.session.add(new_player)
         db.session.commit()
 
-        flash("Account created! You can now log in and play!", "success")
         return redirect(url_for("login"))
 
     return render_template("register.html")
@@ -119,5 +118,6 @@ if __name__ == "__main__":
     with app.app_context(): 
         db.create_all()
 
-    app.run(debug= True)
+    app.run(debug= True, host = "127.0.0.1", port=5000)
+
 

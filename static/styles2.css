@@ -305,4 +305,23 @@ body {
 
 .topbar__logout:hover {
     background: rgba(249, 250, 251, 0.12);
+    
 }
+
+.flash-container {
+    margin-bottom: 12px;
+  }
+  
+  .flash-message {
+    margin: 4px 0;
+    font-size: 0.9rem;
+  }
+  
+  .flash-error {
+    color: #b91c1c; /* red */
+  }
+  
+  .flash-success {
+    color: #047857; /* green */
+  }
+  
