@@ -207,3 +207,4 @@ marimo/_lsp/
 __marimo__/
 node_modules/@esbuild/win32-x64/esbuild.exe
 node_modules/@rollup/rollup-win32-x64-msvc/rollup.win32-x64-msvc.node
+node_modules
