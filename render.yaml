@@ -4,7 +4,7 @@ services:
     name: battleship-flask
     runtime: python
     plan: free
-    buildCommand: "pip install -r requirements.txt"
+    buildCommand: "pip install -r requirements.txt && npm install && npm run build"
     startCommand: "gunicorn app:app"
     envVars:
       - key: SECRET_KEY

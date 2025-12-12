@@ -7,7 +7,12 @@ import os
 
 
 #initialized db stuff
-app = Flask(__name__)
+# Serve Vite build from dist folder in production, root in development
+import sys
+if os.path.exists('dist'):
+    app = Flask(__name__, static_folder='dist', static_url_path='')
+else:
+    app = Flask(__name__, static_folder='.', static_url_path='')
 
 # Use environment variable for secret key in production
 app.secret_key = os.environ.get("SECRET_KEY", "secret-idk")
@@ -193,9 +198,12 @@ def menu():
 @app.route("/game")
 @login_required
 def game():
-    # Serve the Battleship game (index.html from root)
+    # Serve the Battleship game (from dist folder if built, otherwise root)
     from flask import send_file
-    return send_file("index.html")
+    if os.path.exists('dist/index.html'):
+        return send_file("dist/index.html")
+    else:
+        return send_file("index.html")
 
 
 @app.route("/logout")
