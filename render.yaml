@@ -26,8 +26,7 @@ services:
         fromService:
           name: battleship-flask
           type: web
-          property: host
-          envVarKey: FLASK_API_URL
+          property: hostport
 
 databases:
   - name: battleship-db
