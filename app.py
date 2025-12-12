@@ -18,7 +18,13 @@ database_url = os.environ.get("DATABASE_URL", "sqlite:///battleship.db")
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 app.config["SQLALCHEMY_DATABASE_URI"] = database_url
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False 
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# Log database configuration (hide password for security)
+if "postgresql://" in database_url:
+    print(f"📊 Using PostgreSQL database")
+else:
+    print(f"📊 Using SQLite database: {database_url}") 
 
 db = SQLAlchemy(app)
 
@@ -82,16 +88,32 @@ from flask_admin.menu import MenuLink
 admin.add_link(MenuLink(name='Logout', url='/logout'))
 
 # Initialize database tables and admin user
-with app.app_context():
-    db.create_all()
-    # Create admin user if it doesn't exist
-    admin_user = Player.query.filter_by(username="admin").first()
-    if not admin_user:
-        admin_user = Player(username="admin", is_admin=True, score=0)
-        admin_user.set_password("admin")
-        db.session.add(admin_user)
-        db.session.commit()
-        print("✅ Admin user created: username='admin', password='admin'")
+def init_db():
+    """Initialize database tables and create admin user"""
+    try:
+        with app.app_context():
+            print("🔄 Creating database tables...")
+            db.create_all()
+            print("✅ Database tables created successfully!")
+
+            # Create admin user if it doesn't exist
+            admin_user = Player.query.filter_by(username="admin").first()
+            if not admin_user:
+                print("🔄 Creating admin user...")
+                admin_user = Player(username="admin", is_admin=True, score=0)
+                admin_user.set_password("admin")
+                db.session.add(admin_user)
+                db.session.commit()
+                print("✅ Admin user created: username='admin', password='admin'")
+            else:
+                print("ℹ️  Admin user already exists")
+    except Exception as e:
+        print(f"❌ Error initializing database: {e}")
+        import traceback
+        traceback.print_exc()
+
+# Run database initialization
+init_db()
 
 # page routes 
 
