@@ -109,9 +109,19 @@
             document.getElementById('findMatchBtn').addEventListener('click', function(e) {
               e.preventDefault();
               const username = '{{ username }}' || 'Player';
-              const gameUrl = `http://localhost:5173?username=${encodeURIComponent(username)}`;
+
+              // Detect if we're in production or local
+              const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+              const gameUrl = isProduction
+                ? `/game?username=${encodeURIComponent(username)}`  // Production: Use Flask route
+                : `http://localhost:5173?username=${encodeURIComponent(username)}`;  // Local: Use Vite dev server
+
               console.log('Opening game with username:', username);
-              window.open(gameUrl, '_blank');
+              if (isProduction) {
+                window.location.href = gameUrl;  // Same window in production
+              } else {
+                window.open(gameUrl, '_blank');  // New window for local dev
+              }
             });
           </script>
 

@@ -411,8 +411,8 @@ import { io } from 'socket.io-client';
     // Determine socket URL based on environment
     const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
     const socketURL = isProduction
-        ? 'YOUR_RENDER_SOCKETIO_URL_HERE'  // Replace with actual Render URL after deployment
-        : 'http://localhost:3000';
+        ? 'https://battleship-socketio.onrender.com'  // Production Socket.IO server
+        : 'http://localhost:3000';  // Local development
 
     console.log(`🔌 Initializing Socket.IO connection to ${socketURL}...`);
     socket = io(socketURL, {

@@ -193,8 +193,9 @@ def menu():
 @app.route("/game")
 @login_required
 def game():
-
-    return render_template("game.html", username = session.get("username"))
+    # Serve the Battleship game (index.html from root)
+    from flask import send_file
+    return send_file("index.html")
 
 
 @app.route("/logout")
