@@ -81,6 +81,18 @@ admin.add_view(SecureModelView(Player, db.session))
 from flask_admin.menu import MenuLink
 admin.add_link(MenuLink(name='Logout', url='/logout'))
 
+# Initialize database tables and admin user
+with app.app_context():
+    db.create_all()
+    # Create admin user if it doesn't exist
+    admin_user = Player.query.filter_by(username="admin").first()
+    if not admin_user:
+        admin_user = Player(username="admin", is_admin=True, score=0)
+        admin_user.set_password("admin")
+        db.session.add(admin_user)
+        db.session.commit()
+        print("✅ Admin user created: username='admin', password='admin'")
+
 # page routes 
 
 @app.route("/")
@@ -203,21 +215,5 @@ def leaderboard():
 
 
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-
-        # Create admin user if it doesn't exist
-        admin = Player.query.filter_by(username="admin").first()
-        if not admin:
-            print("Creating admin user...")
-            admin_user = Player(username="admin", is_admin=True, score=0)
-            admin_user.set_password("admin")
-            db.session.add(admin_user)
-            db.session.commit()
-            print("✅ Admin user created!")
-            print("   Username: admin")
-            print("   Password: admin")
-        else:
-            print("ℹ️  Admin user already exists")
-
-    app.run(debug= True, host = "127.0.0.1", port=5000)
+    # Database tables and admin user are created automatically when app starts
+    app.run(debug=True, host="127.0.0.1", port=5000)
