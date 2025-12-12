@@ -3,14 +3,21 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_admin import Admin, AdminIndexView
 from flask_admin.contrib.sqla import ModelView
+import os
 
 
-#initialized db stuff 
+#initialized db stuff
 app = Flask(__name__)
 
-app.secret_key = "secret-idk"
+# Use environment variable for secret key in production
+app.secret_key = os.environ.get("SECRET_KEY", "secret-idk")
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///battleship.db"
+# Use PostgreSQL in production (Render), SQLite locally
+database_url = os.environ.get("DATABASE_URL", "sqlite:///battleship.db")
+# Fix for Render's postgres:// URL (SQLAlchemy requires postgresql://)
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+app.config["SQLALCHEMY_DATABASE_URI"] = database_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False 
 
 db = SQLAlchemy(app)

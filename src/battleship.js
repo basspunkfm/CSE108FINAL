@@ -408,9 +408,14 @@ import { io } from 'socket.io-client';
     uiLayer.addChild(opponentStatusText);
 
     // --- INITIALIZE SOCKET.IO CONNECTION ---
-    // All UI elements are now created, safe to connect
-    console.log('🔌 Initializing Socket.IO connection to http://localhost:3000...');
-    socket = io('http://localhost:3000', {
+    // Determine socket URL based on environment
+    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    const socketURL = isProduction
+        ? 'YOUR_RENDER_SOCKETIO_URL_HERE'  // Replace with actual Render URL after deployment
+        : 'http://localhost:3000';
+
+    console.log(`🔌 Initializing Socket.IO connection to ${socketURL}...`);
+    socket = io(socketURL, {
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,

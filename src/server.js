@@ -18,7 +18,8 @@ const waitingPlayers = [];
 // Helper function to update player score in database
 async function updatePlayerScore(username, scoreChange) {
   try {
-    const response = await fetch('http://127.0.0.1:5000/api/update_score', {
+    const FLASK_API_URL = process.env.FLASK_API_URL || 'http://127.0.0.1:5000';
+    const response = await fetch(`${FLASK_API_URL}/api/update_score`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
