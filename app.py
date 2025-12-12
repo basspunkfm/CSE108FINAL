@@ -7,7 +7,7 @@ import os
 
 
 #initialized db stuff
-# Keep default static folder for templates, serve game separately
+
 app = Flask(__name__)
 
 # Use environment variable for secret key in production
@@ -194,12 +194,9 @@ def menu():
 @app.route("/game")
 @login_required
 def game():
-    # Serve the Battleship game (from dist folder if built, otherwise root)
+    # Serve the Battleship game (index.html from root)
     from flask import send_file
-    if os.path.exists('dist/index.html'):
-        return send_file("dist/index.html")
-    else:
-        return send_file("index.html")
+    return send_file("index.html")
 
 @app.route('/assets/<path:filename>')
 def serve_game_assets(filename):
