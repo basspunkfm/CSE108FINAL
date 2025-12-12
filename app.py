@@ -7,12 +7,8 @@ import os
 
 
 #initialized db stuff
-# Serve Vite build from dist folder in production, root in development
-import sys
-if os.path.exists('dist'):
-    app = Flask(__name__, static_folder='dist', static_url_path='')
-else:
-    app = Flask(__name__, static_folder='.', static_url_path='')
+# Keep default static folder for templates, serve game separately
+app = Flask(__name__)
 
 # Use environment variable for secret key in production
 app.secret_key = os.environ.get("SECRET_KEY", "secret-idk")
@@ -205,6 +201,15 @@ def game():
     else:
         return send_file("index.html")
 
+@app.route('/assets/<path:filename>')
+def serve_game_assets(filename):
+    # Serve Vite build assets (JS, CSS, images)
+    from flask import send_from_directory
+    if os.path.exists('dist/assets'):
+        return send_from_directory('dist/assets', filename)
+    else:
+        return send_from_directory('src', filename)
+
 
 @app.route("/logout")
 def logout():
@@ -216,8 +221,10 @@ def logout():
 def update_score():
     """API endpoint to update player score from game server"""
     data = request.get_json()
+    print(f"📊 Score update request received: {data}")
 
     if not data or "username" not in data or "score_change" not in data:
+        print(f"❌ Invalid request data: {data}")
         return jsonify({"error": "Missing username or score_change"}), 400
 
     username = data["username"]
@@ -225,10 +232,14 @@ def update_score():
 
     player = Player.query.filter_by(username=username).first()
     if not player:
+        print(f"❌ Player not found: {username}")
         return jsonify({"error": "Player not found"}), 404
 
+    old_score = player.score
     player.score += score_change
     db.session.commit()
+
+    print(f"✅ Score updated for {username}: {old_score} → {player.score} (+{score_change})")
 
     return jsonify({
         "success": True,
