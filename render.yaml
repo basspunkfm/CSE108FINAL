@@ -3,6 +3,7 @@ services:
   - type: web
     name: battleship-flask
     runtime: python
+    plan: free
     buildCommand: "pip install -r requirements.txt"
     startCommand: "gunicorn app:app"
     envVars:
@@ -19,6 +20,7 @@ services:
   - type: web
     name: battleship-socketio
     runtime: node
+    plan: free
     buildCommand: "npm install"
     startCommand: "node src/server.js"
     envVars:
@@ -30,5 +32,6 @@ services:
 
 databases:
   - name: battleship-db
+    plan: free
     databaseName: battleship
     user: battleship
