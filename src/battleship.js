@@ -24,18 +24,81 @@ import { io } from 'socket.io-client';
     app.canvas.style.position = 'absolute';
     document.body.appendChild(app.canvas);
 
-    // Socket.IO connection
-    const socket = io('http://localhost:3000');
+    // Socket will be initialized after UI is created
+    let socket;
 
-    // Debug: Log ALL socket events
-    socket.onAny((eventName, ...args) => {
-        console.log(`🔵 SOCKET EVENT RECEIVED: ${eventName}`, args);
+    // Chat DOM elements
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const chatSendBtn = document.getElementById('chat-send-btn');
+
+    // Chat functions
+    function addChatMessage(text, type = 'system', sender = '') {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${type}`;
+
+        if (sender && type !== 'system') {
+            const senderDiv = document.createElement('div');
+            senderDiv.className = 'message-sender';
+            senderDiv.textContent = sender;
+            messageDiv.appendChild(senderDiv);
+        }
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'message-text';
+        textDiv.textContent = text;
+        messageDiv.appendChild(textDiv);
+
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function sendChatMessage() {
+        const message = chatInput.value.trim();
+        if (message && gameState.gameId) {
+            socket.emit('chatMessage', { message, gameId: gameState.gameId });
+            addChatMessage(message, 'player', 'You');
+            chatInput.value = '';
+        }
+    }
+
+    // Chat event listeners
+    chatSendBtn.addEventListener('click', sendChatMessage);
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendChatMessage();
+        }
     });
+
+    // Get username from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    let myUsername = urlParams.get('username');
+
+    console.log('🔍 URL parameters:', window.location.search);
+    console.log('📝 Username from URL:', myUsername);
+
+    // If no username in URL, try localStorage
+    if (!myUsername || myUsername.trim() === '') {
+        myUsername = localStorage.getItem('battleship_username');
+        console.log('📝 Username from localStorage:', myUsername);
+    }
+
+    // If still no username, use a default but log warning
+    if (!myUsername || myUsername.trim() === '') {
+        console.warn('⚠️ No username found! Using default "Player"');
+        myUsername = 'Player' + Math.floor(Math.random() * 1000);
+    }
+
+    // Store username in localStorage for next time
+    localStorage.setItem('battleship_username', myUsername);
+    console.log('✅ Using username:', myUsername);
 
     // Game state
     const gameState = {
         myPlayerId: null,
+        myUsername: myUsername,
         opponentId: null,
+        opponentName: null,
         playerIndex: null,
         gameId: null,
         isMyTurn: false,
@@ -170,6 +233,12 @@ import { io } from 'socket.io-client';
     bgSprite.tileScale.set(1.25, 1.2);
     bgLayer.addChild(bgSprite);
 
+    // Make background adaptive to window resize
+    window.addEventListener('resize', () => {
+        bgSprite.width = app.screen.width;
+        bgSprite.height = app.screen.height;
+    });
+
     app.ticker.add(() => {
         bgSprite.tilePosition.x -= 1;
     });
@@ -199,7 +268,7 @@ import { io } from 'socket.io-client';
     turnText.y = 70;
     uiLayer.addChild(turnText);
 
-    // --- FIND GAME BUTTON ---
+    // --- FIND GAME BUTTON (HIDDEN - Auto-matchmaking enabled) ---
     const buttonBg = new Graphics()
         .roundRect(0, 0, 180, 50, 10)
         .fill(0x27ae60);
@@ -207,6 +276,7 @@ import { io } from 'socket.io-client';
     buttonBg.y = 25;
     buttonBg.eventMode = 'static';
     buttonBg.cursor = 'pointer';
+    buttonBg.visible = false; // Hide the button
 
     const buttonText = new Text({
         text: 'Find Game',
@@ -219,10 +289,11 @@ import { io } from 'socket.io-client';
     buttonText.anchor.set(0.5);
     buttonText.x = buttonBg.x + 90;
     buttonText.y = buttonBg.y + 25;
+    buttonText.visible = false; // Hide the text
 
     buttonBg.on('pointerdown', () => {
         if (gameState.gameStatus === 'waiting' || gameState.gameStatus === 'finished') {
-            socket.emit('findGame');
+            socket.emit('findGame', gameState.myUsername);
             statusText.text = 'Finding game...';
             buttonBg.alpha = 0.5;
         }
@@ -235,7 +306,7 @@ import { io } from 'socket.io-client';
     const readyButtonBg = new Graphics()
         .roundRect(0, 0, 180, 50, 10)
         .fill(0xe67e22);
-    readyButtonBg.x = 760;
+    readyButtonBg.x = 550;
     readyButtonBg.y = 25;
     readyButtonBg.eventMode = 'static';
     readyButtonBg.cursor = 'pointer';
@@ -266,7 +337,7 @@ import { io } from 'socket.io-client';
     const forfeitButtonBg = new Graphics()
         .roundRect(0, 0, 180, 50, 10)
         .fill(0xc0392b);
-    forfeitButtonBg.x = 970;
+    forfeitButtonBg.x = 760;
     forfeitButtonBg.y = 25;
     forfeitButtonBg.eventMode = 'static';
     forfeitButtonBg.cursor = 'pointer';
@@ -299,6 +370,7 @@ import { io } from 'socket.io-client';
                 turnText.text = '';
                 forfeitButtonBg.visible = false;
                 forfeitButtonText.visible = false;
+                addChatMessage('🏳️ You have forfeited the battle.', 'system');
                 console.log('Forfeit sent, status updated');
             }
         }
@@ -309,7 +381,7 @@ import { io } from 'socket.io-client';
 
     // --- PLACEMENT INSTRUCTIONS ---
     const instructionText = new Text({
-        text: 'Drag ships to YOUR FLEET grid. Right-click to rotate (90° increments).',
+        text: 'Drag ships to YOUR FLEET grid. Right-click placed ships to rotate.',
         style: {
             fontSize: 18,
             fill: 0xffffff,
@@ -321,20 +393,101 @@ import { io } from 'socket.io-client';
     instructionText.visible = false;
     uiLayer.addChild(instructionText);
 
+    // --- OPPONENT READY STATUS ---
+    const opponentStatusText = new Text({
+        text: 'Opponent Status: Placing ships...',
+        style: {
+            fontSize: 20,
+            fill: 0xffea00,
+            fontWeight: 'bold'
+        }
+    });
+    opponentStatusText.x = 700;
+    opponentStatusText.y = 750;
+    opponentStatusText.visible = false;
+    uiLayer.addChild(opponentStatusText);
+
+    // --- INITIALIZE SOCKET.IO CONNECTION ---
+    // All UI elements are now created, safe to connect
+    console.log('🔌 Initializing Socket.IO connection to http://localhost:3000...');
+    socket = io('http://localhost:3000', {
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: 5,
+        transports: ['websocket', 'polling']
+    });
+
+    // Debug: Log ALL socket events
+    socket.onAny((eventName, ...args) => {
+        console.log(`🔵 SOCKET EVENT RECEIVED: ${eventName}`, args);
+    });
+
+    // Connection error handling (now safe to use UI elements)
+    socket.on('connect_error', (error) => {
+        console.error('❌ Connection Error:', error);
+        console.error('Error details:', error.message);
+        statusText.text = 'Connection failed! Is the server running?';
+        statusText.style.fill = 0xe74c3c;
+        addChatMessage('⚠️ Failed to connect to game server on port 3000.', 'system');
+        addChatMessage('💡 Make sure to run: npm run server', 'system');
+    });
+
+    socket.on('disconnect', (reason) => {
+        console.log('⚠️ Disconnected:', reason);
+        statusText.text = 'Disconnected from server';
+        statusText.style.fill = 0xf39c12;
+        addChatMessage('⚠️ Disconnected from server.', 'system');
+    });
+
+    socket.on('reconnect', (attemptNumber) => {
+        console.log('✅ Reconnected after', attemptNumber, 'attempts');
+        statusText.text = 'Reconnected! Searching for opponent...';
+        statusText.style.fill = 0x27ae60;
+        addChatMessage('✓ Reconnected to server!', 'system');
+        // Try to find game again after reconnecting
+        socket.emit('findGame', gameState.myUsername);
+        gameState.gameStatus = 'waiting';
+    });
+
+    socket.on('reconnect_attempt', (attemptNumber) => {
+        console.log('🔄 Reconnection attempt', attemptNumber);
+        statusText.text = `Reconnecting... (attempt ${attemptNumber}/5)`;
+        statusText.style.fill = 0xf39c12;
+    });
+
+    socket.on('reconnect_failed', () => {
+        console.error('❌ All reconnection attempts failed');
+        statusText.text = 'Connection failed. Please refresh the page.';
+        statusText.style.fill = 0xe74c3c;
+        addChatMessage('❌ Could not reconnect to server. Please refresh the page.', 'system');
+    });
+
     // --- SOCKET.IO EVENT LISTENERS ---
     socket.on('connect', () => {
-        console.log('Connected to server');
+        console.log('✅ Connected to server successfully! Socket ID:', socket.id);
         gameState.myPlayerId = socket.id;
-        statusText.text = 'Click "Find Game" to start!';
+        statusText.text = 'Searching for opponent...';
+        statusText.style.fill = 0xffffff; // Reset to white
+        addChatMessage('🔍 Connected to Battle Server. Searching for an opponent...', 'system');
+
+        // Automatically start finding a game
+        console.log('🎮 Emitting findGame event with username:', gameState.myUsername);
+        socket.emit('findGame', gameState.myUsername);
+        gameState.gameStatus = 'waiting';
     });
 
     socket.on('waiting', () => {
         statusText.text = 'Waiting for opponent...';
         gameState.gameStatus = 'waiting';
+        addChatMessage('Searching for opponent...', 'system');
     });
 
     socket.on('gameFound', (data) => {
         console.log('Game found!', data);
+
+        // Clear chat for new game
+        chatMessages.innerHTML = '';
 
         // Reset grids for new game
         playerGrid.reset();
@@ -349,18 +502,44 @@ import { io } from 'socket.io-client';
         gameState.gameId = data.gameId;
         gameState.playerIndex = data.playerIndex;
         gameState.opponentId = data.opponentId;
+        gameState.opponentName = data.opponentName || 'Opponent';
         gameState.gameStatus = 'setup';
         statusText.text = 'Place your ships on YOUR FLEET grid';
-        buttonBg.alpha = 1.0;
+
+        // Update enemy label with opponent's name
+        enemyLabel.text = `${gameState.opponentName.toUpperCase()}'S FLEET`;
 
         // Show placement UI
         readyButtonBg.visible = true;
         readyButtonText.visible = true;
         instructionText.visible = true;
         shipsLabel.visible = true;
+        opponentStatusText.visible = true;
+        opponentStatusText.text = `${gameState.opponentName}'s Status: Placing ships...`;
+        opponentStatusText.style.fill = 0xffea00;
 
         // Create ships for placement
         createPlacementShips();
+
+        addChatMessage(`🎯 Matched with ${gameState.opponentName}! Place your ships to begin.`, 'system');
+    });
+
+    socket.on('opponentReady', () => {
+        console.log('Opponent is ready!');
+        opponentStatusText.text = `${gameState.opponentName}'s Status: READY! ✓`;
+        opponentStatusText.style.fill = 0x27ae60;
+        addChatMessage(`⚓ ${gameState.opponentName} has placed their ships and is ready!`, 'system');
+    });
+
+    // Socket listener for incoming chat messages
+    socket.on('chatMessage', (data) => {
+        console.log('📨 Chat message received:', data);
+        // Only display if message is from opponent (not from us)
+        if (data.senderId !== socket.id) {
+            const senderName = data.senderName || gameState.opponentName || 'Opponent';
+            console.log('💬 Displaying message from:', senderName);
+            addChatMessage(data.message, 'opponent', senderName);
+        }
     });
 
     socket.on('gameStart', (data) => {
@@ -369,9 +548,19 @@ import { io } from 'socket.io-client';
         gameState.isMyTurn = data.currentTurn === socket.id;
         updateTurnText();
 
+        // Hide opponent status text
+        opponentStatusText.visible = false;
+
         // Show forfeit button during gameplay
         forfeitButtonBg.visible = true;
         forfeitButtonText.visible = true;
+
+        addChatMessage('BATTLE COMMENCED! May the best admiral win!', 'system');
+        if (gameState.isMyTurn) {
+            addChatMessage('You have the first shot!', 'system');
+        } else {
+            addChatMessage('Opponent fires first!', 'system');
+        }
     });
 
     socket.on('shotResult', (data) => {
@@ -381,15 +570,19 @@ import { io } from 'socket.io-client';
             // My shot
             if (data.hit) {
                 enemyGrid.markHit(data.x, data.y);
+                addChatMessage(`💥 You HIT enemy ship at (${data.x}, ${data.y})!`, 'system');
             } else {
                 enemyGrid.markMiss(data.x, data.y);
+                addChatMessage(`💧 You MISSED at (${data.x}, ${data.y})`, 'system');
             }
         } else {
             // Opponent's shot on my grid
             if (data.hit) {
                 playerGrid.markHit(data.x, data.y);
+                addChatMessage(`💥 Opponent HIT your ship at (${data.x}, ${data.y})!`, 'system');
             } else {
                 playerGrid.markMiss(data.x, data.y);
+                addChatMessage(`💧 Opponent MISSED at (${data.x}, ${data.y})`, 'system');
             }
         }
     });
@@ -404,9 +597,11 @@ import { io } from 'socket.io-client';
         if (data.winner === socket.id) {
             statusText.text = 'YOU WIN! 🎉';
             statusText.style.fill = 0x27ae60;
+            addChatMessage('🎉 VICTORY! You sank all enemy ships!', 'system');
         } else {
             statusText.text = 'YOU LOSE';
             statusText.style.fill = 0xe74c3c;
+            addChatMessage('💀 DEFEAT! All your ships have been sunk.', 'system');
         }
         turnText.text = '';
         forfeitButtonBg.visible = false;
@@ -426,6 +621,7 @@ import { io } from 'socket.io-client';
         forfeitButtonBg.visible = false;
         forfeitButtonText.visible = false;
         console.log('Status updated to:', statusText.text);
+        addChatMessage('🏳️ Opponent has forfeited the match. You win!', 'system');
     });
 
     socket.on('opponentDisconnected', () => {
@@ -434,6 +630,7 @@ import { io } from 'socket.io-client';
         turnText.text = '';
         forfeitButtonBg.visible = false;
         forfeitButtonText.visible = false;
+        addChatMessage('⚠️ Opponent disconnected from the battle.', 'system');
     });
 
     function updateTurnText() {
@@ -541,6 +738,8 @@ import { io } from 'socket.io-client';
         gameState.placementShips.forEach(ship => {
             ship.container.visible = false;
         });
+
+        addChatMessage('⚓ Your fleet is positioned and ready for battle!', 'system');
     }
 
     function isValidPlacement(ship, gridX, gridY) {

@@ -119,6 +119,12 @@ export class Ship {
   }
 
   rotate(validateCallback = null) {
+    // Only allow rotation if ship is placed in the grid
+    if (!this.isPlaced) {
+      console.log(`Cannot rotate ${this.name} - ship must be placed in grid first`);
+      return;
+    }
+
     const oldRotation = this.rotation;
     const wasVertical = this.isVertical;
 

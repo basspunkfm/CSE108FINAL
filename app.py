@@ -1,6 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_admin import Admin, AdminIndexView
+from flask_admin.contrib.sqla import ModelView
 
 
 #initialized db stuff 
@@ -11,15 +13,16 @@ app.secret_key = "secret-idk"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///battleship.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False 
 
-db = SQLAlchemy(app) 
+db = SQLAlchemy(app)
 
 # actual database model 
 
-class Player(db.Model): 
+class Player(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     username = db.Column(db.String(25), unique = True, nullable = False)
-    password_hash = db.Column(db.String(128), nullable = False)
+    password_hash = db.Column(db.String(200), nullable = False)
     score = db.Column(db.Integer, default=0)
+    is_admin = db.Column(db.Boolean, default=False)
 
     def set_password(self,password_plain):
         self.password_hash = generate_password_hash(password_plain)
@@ -30,46 +33,82 @@ class Player(db.Model):
 
 # login stuff 
 
-def login_required(view_func): 
-    from functools import wraps 
+def login_required(view_func):
+    from functools import wraps
 
     @wraps(view_func)
-    def wrapper(*args, **kwargs): 
-        if "user_id" not in session: 
+    def wrapper(*args, **kwargs):
+        if "user_id" not in session:
             return redirect(url_for("login"))
         return view_func(*args, **kwargs)
-    return wrapper 
+    return wrapper
+
+# Flask-Admin setup with authentication
+class SecureModelView(ModelView):
+    def is_accessible(self):
+        if "user_id" not in session:
+            return False
+        player = Player.query.get(session["user_id"])
+        return player and player.is_admin
+
+    def inaccessible_callback(self, name, **kwargs):
+        flash("You must be an admin to access this page.", "error")
+        return redirect(url_for("login"))
+
+class SecureAdminIndexView(AdminIndexView):
+    def is_accessible(self):
+        if "user_id" not in session:
+            return False
+        player = Player.query.get(session["user_id"])
+        return player and player.is_admin
+
+    def inaccessible_callback(self, name, **kwargs):
+        flash("You must be an admin to access this page.", "error")
+        return redirect(url_for("login"))
+
+# Initialize Flask-Admin
+admin = Admin(app, name='Battleship Admin', index_view=SecureAdminIndexView())
+admin.add_view(SecureModelView(Player, db.session))
+
+# Add logout link to admin navbar
+from flask_admin.menu import MenuLink
+admin.add_link(MenuLink(name='Logout', url='/logout'))
 
 # page routes 
 
-@app.route("/")                             # if the user id is in the database, redirect to the game, 
-def index():                                # if not, redirect back to login 
-    if "user_id" in session: 
-        return redirect(url_for("game"))
+@app.route("/")
+def index():
+    if "user_id" in session:
+        player = Player.query.get(session["user_id"])
+        if player and player.is_admin:
+            return redirect("/admin")  # Redirect admins to admin panel
+        return redirect(url_for("menu"))  # Redirect regular users to menu
     return redirect(url_for("login")) 
 
 @app.route("/login", methods = ["GET", "POST"])
 
-def login(): 
-    if request.method == "POST": 
+def login():
+    if request.method == "POST":
         username = request.form.get("username","").strip()
         password = request.form.get("password","")
 
         player = Player.query.filter_by(username=username).first()
-        if player and player.check_password(password): 
-            #save the new user in the db session: 
+        if player and player.check_password(password):
+            # Save user in session
+            session["user_id"] = player.id
+            session["username"] = player.username
+            session["is_admin"] = player.is_admin
 
-            session["user_id"] = player.id 
-            session["username"] = player.username 
+            # Redirect based on admin status
+            if player.is_admin:
+                return redirect("/admin")  # Admin goes to admin panel
+            else:
+                return redirect(url_for("menu"))  # Regular user goes to menu
 
-    
-            return redirect(url_for("game"))
-
-        else: 
+        else:
             error_msg = "Invalid username or password. Please try again."
-
             return render_template("index.html", error_msg= error_msg, username = username)
-    
+
     return render_template("index.html")
 
 @app.route("/register",methods=["GET","POST"])
@@ -99,12 +138,54 @@ def register():
 
     return render_template("register.html")
 
+@app.route("/menu")
+@login_required
+def menu():
+    # Prevent admins from accessing game menu
+    player = Player.query.get(session["user_id"])
+    if player and player.is_admin:
+        return redirect("/admin")
+
+    username = session.get("username")
+    return render_template("menu.html", username=username)
+
 @app.route("/game")
-@login_required 
-def game(): 
-    
+@login_required
+def game():
+
     return render_template("game.html", username = session.get("username"))
 
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("You have been logged out successfully.", "success")
+    return redirect(url_for("login"))
+
+@app.route("/api/update_score", methods=["POST"])
+def update_score():
+    """API endpoint to update player score from game server"""
+    data = request.get_json()
+
+    if not data or "username" not in data or "score_change" not in data:
+        return jsonify({"error": "Missing username or score_change"}), 400
+
+    username = data["username"]
+    score_change = data["score_change"]
+
+    player = Player.query.filter_by(username=username).first()
+    if not player:
+        return jsonify({"error": "Player not found"}), 404
+
+    player.score += score_change
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "username": username,
+        "new_score": player.score,
+        "score_change": score_change
+    })
 
 @app.route("/leaderboard")
 def leaderboard():
@@ -114,10 +195,22 @@ def leaderboard():
     return render_template("leaderboard.html", players = players)
 
 
-if __name__ == "__main__": 
-    with app.app_context(): 
+if __name__ == "__main__":
+    with app.app_context():
         db.create_all()
 
+        # Create admin user if it doesn't exist
+        admin = Player.query.filter_by(username="admin").first()
+        if not admin:
+            print("Creating admin user...")
+            admin_user = Player(username="admin", is_admin=True, score=0)
+            admin_user.set_password("admin")
+            db.session.add(admin_user)
+            db.session.commit()
+            print("✅ Admin user created!")
+            print("   Username: admin")
+            print("   Password: admin")
+        else:
+            print("ℹ️  Admin user already exists")
+
     app.run(debug= True, host = "127.0.0.1", port=5000)
-
-

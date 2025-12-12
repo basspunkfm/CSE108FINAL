@@ -16,7 +16,7 @@
       <div class="topbar__user">
         {% if session.get("username") %}
           <span>Logged in as <strong>{{ session["username"] }}</strong></span>
-          <a href="{{ url_for('game') }}" class="topbar__logout">Back to game</a>
+          <a href="{{ url_for('menu') }}" class="topbar__logout">Back to Menu</a>
         {% else %}
           <a href="{{ url_for('login') }}" class="topbar__logout">Log in</a>
         {% endif %}
