@@ -210,6 +210,18 @@ def serve_game_assets(filename):
     else:
         return send_from_directory('src', filename)
 
+@app.route('/src/<path:filename>')
+def serve_src(filename):
+    # Serve source files for local development
+    from flask import send_from_directory
+    return send_from_directory('src', filename)
+
+@app.route('/node_modules/<path:filename>')
+def serve_node_modules(filename):
+    # Serve node_modules for local development
+    from flask import send_from_directory
+    return send_from_directory('node_modules', filename)
+
 
 @app.route("/logout")
 def logout():
