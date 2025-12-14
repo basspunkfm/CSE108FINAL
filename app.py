@@ -8,7 +8,7 @@ import os
 
 
 #initialized db stuff
-
+# Keep default static folder for templates, serve game separately
 app = Flask(__name__)
 
 # Configure WhiteNoise for serving static files in production
@@ -203,12 +203,11 @@ def menu():
 @app.route("/game")
 @login_required
 def game():
-    # Serve the Battleship game (built version from dist or dev version from root)
+    # Serve the Battleship game (from dist folder if built, otherwise root)
     from flask import send_file
     if os.path.exists('dist/index.html'):
         return send_file("dist/index.html")
     else:
-        # Fallback for local development without build
         return send_file("index.html")
 
 @app.route('/assets/<path:filename>')
