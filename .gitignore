@@ -10,7 +10,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+# dist/  # Allow Vite build output to be committed for deployment
 downloads/
 eggs/
 .eggs/

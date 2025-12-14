@@ -203,9 +203,13 @@ def menu():
 @app.route("/game")
 @login_required
 def game():
-    # Serve the Battleship game (index.html from root)
+    # Serve the Battleship game (built version from dist or dev version from root)
     from flask import send_file
-    return send_file("index.html")
+    if os.path.exists('dist/index.html'):
+        return send_file("dist/index.html")
+    else:
+        # Fallback for local development without build
+        return send_file("index.html")
 
 @app.route('/assets/<path:filename>')
 def serve_game_assets(filename):
