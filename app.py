@@ -194,9 +194,19 @@ def menu():
 @app.route("/game")
 @login_required
 def game():
-    # Serve the Battleship game (index.html from root)
+    # Serve the Battleship game
+    # In production, serve from dist/ (Vite build output)
+    # In development, serve from root (for Vite dev server redirect)
     from flask import send_file
-    return send_file("index.html")
+    
+    dist_index = os.path.join(os.path.dirname(__file__), 'dist', 'index.html')
+    if os.path.exists(dist_index):
+        print(f"📂 Serving game from dist/index.html")
+        return send_file(dist_index)
+    else:
+        # Fallback to root index.html for local dev
+        print(f"📂 Serving game from root index.html (dev mode)")
+        return send_file("index.html")
 
 @app.route('/assets/<path:filename>')
 def serve_game_assets(filename):
@@ -218,6 +228,48 @@ def serve_node_modules(filename):
     # Serve node_modules for local development
     from flask import send_from_directory
     return send_from_directory('node_modules', filename)
+
+# Serve static game assets (images, audio, etc.) from root
+@app.route('/images/<path:filename>')
+def serve_images(filename):
+    from flask import send_from_directory
+    # Check dist first, then public, then root
+    if os.path.exists(os.path.join('dist', 'images')):
+        return send_from_directory('dist/images', filename)
+    elif os.path.exists(os.path.join('public', 'images')):
+        return send_from_directory('public/images', filename)
+    else:
+        return send_from_directory('images', filename)
+
+@app.route('/audio/<path:filename>')
+def serve_audio(filename):
+    from flask import send_from_directory
+    if os.path.exists(os.path.join('dist', 'audio')):
+        return send_from_directory('dist/audio', filename)
+    elif os.path.exists(os.path.join('public', 'audio')):
+        return send_from_directory('public/audio', filename)
+    else:
+        return send_from_directory('audio', filename)
+
+@app.route('/battleship_spritesheet.json')
+def serve_spritesheet_json():
+    from flask import send_file
+    if os.path.exists('dist/battleship_spritesheet.json'):
+        return send_file('dist/battleship_spritesheet.json')
+    elif os.path.exists('public/battleship_spritesheet.json'):
+        return send_file('public/battleship_spritesheet.json')
+    else:
+        return send_file('battleship_spritesheet.json')
+
+@app.route('/battleship_spritesheet.png')
+def serve_spritesheet_png():
+    from flask import send_file
+    if os.path.exists('dist/battleship_spritesheet.png'):
+        return send_file('dist/battleship_spritesheet.png')
+    elif os.path.exists('public/battleship_spritesheet.png'):
+        return send_file('public/battleship_spritesheet.png')
+    else:
+        return send_file('battleship_spritesheet.png')
 
 
 @app.route("/logout")
