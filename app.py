@@ -3,12 +3,21 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_admin import Admin, AdminIndexView
 from flask_admin.contrib.sqla import ModelView
+from whitenoise import WhiteNoise
 import os
 
 
 #initialized db stuff
 
 app = Flask(__name__)
+
+# Configure WhiteNoise for serving static files in production
+app.wsgi_app = WhiteNoise(
+    app.wsgi_app,
+    root='static/',
+    prefix='static/',
+    autorefresh=True
+)
 
 # Use environment variable for secret key in production
 app.secret_key = os.environ.get("SECRET_KEY", "secret-idk")
