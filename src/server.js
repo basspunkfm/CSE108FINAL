@@ -17,8 +17,30 @@ const waitingPlayers = [];
 
 // Helper function to update player score in database
 async function updatePlayerScore(username, scoreChange) {
+  // Validate inputs
+  if (!username || username === 'undefined' || username === 'null') {
+    console.error(`❌ Cannot update score: Invalid username "${username}"`);
+    return null;
+  }
+
+  if (typeof scoreChange !== 'number' || isNaN(scoreChange)) {
+    console.error(`❌ Cannot update score: Invalid scoreChange "${scoreChange}"`);
+    return null;
+  }
+
   try {
-    const FLASK_API_URL = process.env.FLASK_API_URL || 'http://127.0.0.1:5000';
+    // Build the Flask API URL
+    let FLASK_API_URL = process.env.FLASK_API_URL || 'http://127.0.0.1:5000';
+    
+    // Fix: If FLASK_API_URL doesn't start with http, add it
+    if (!FLASK_API_URL.startsWith('http://') && !FLASK_API_URL.startsWith('https://')) {
+      // On Render, internal services communicate over http
+      FLASK_API_URL = `http://${FLASK_API_URL}`;
+    }
+    
+    console.log(`📤 Sending score update to: ${FLASK_API_URL}/api/update_score`);
+    console.log(`   Username: "${username}", Score change: ${scoreChange}`);
+
     const response = await fetch(`${FLASK_API_URL}/api/update_score`, {
       method: 'POST',
       headers: {
@@ -31,15 +53,17 @@ async function updatePlayerScore(username, scoreChange) {
     });
 
     const result = await response.json();
+    
     if (response.ok) {
       console.log(`✅ Score updated for ${username}: +${scoreChange} (New total: ${result.new_score})`);
       return result;
     } else {
-      console.error(`❌ Failed to update score for ${username}:`, result.error);
+      console.error(`❌ Failed to update score for ${username}:`, result.error || result);
       return null;
     }
   } catch (error) {
-    console.error(`❌ Error updating score for ${username}:`, error);
+    console.error(`❌ Error updating score for ${username}:`, error.message);
+    console.error(`   Full error:`, error);
     return null;
   }
 }
@@ -48,10 +72,13 @@ io.on('connection', (socket) => {
   console.log('✅ Player connected:', socket.id);
 
   socket.on('findGame', (username) => {
-    console.log('🎮 Player', socket.id, `(${username || 'Unknown'}) is looking for a game...`);
+    // Ensure username is valid
+    const validUsername = (username && username.trim()) ? username.trim() : `Player_${socket.id.slice(0, 6)}`;
+    
+    console.log('🎮 Player', socket.id, `(${validUsername}) is looking for a game...`);
 
     // Store username on socket
-    socket.username = username || 'Player';
+    socket.username = validUsername;
 
     if (waitingPlayers.length > 0) {
       const opponent = waitingPlayers.shift();
@@ -60,8 +87,22 @@ io.on('connection', (socket) => {
       const gameState = {
         id: gameId,
         players: [
-          { id: socket.id, username: socket.username, ready: false, ships: [], grid: Array(10).fill(null).map(() => Array(10).fill('empty')), hits: 0 },
-          { id: opponent.id, username: opponent.username, ready: false, ships: [], grid: Array(10).fill(null).map(() => Array(10).fill('empty')), hits: 0 }
+          { 
+            id: socket.id, 
+            username: socket.username,  // Use socket.username which is validated
+            ready: false, 
+            ships: [], 
+            grid: Array(10).fill(null).map(() => Array(10).fill('empty')), 
+            hits: 0 
+          },
+          { 
+            id: opponent.id, 
+            username: opponent.username,  // Use opponent.username which was validated when they joined
+            ready: false, 
+            ships: [], 
+            grid: Array(10).fill(null).map(() => Array(10).fill('empty')), 
+            hits: 0 
+          }
         ],
         currentTurn: socket.id,
         status: 'setup' // setup, playing, finished
@@ -89,11 +130,13 @@ io.on('connection', (socket) => {
         opponentName: socket.username
       });
 
-      console.log(`✅ Game created: ${gameId} - ${socket.username} vs ${opponent.username}`);
+      console.log(`✅ Game created: ${gameId}`);
+      console.log(`   Player 1: ${socket.username} (${socket.id})`);
+      console.log(`   Player 2: ${opponent.username} (${opponent.id})`);
     } else {
       waitingPlayers.push(socket);
       socket.emit('waiting');
-      console.log(`Player ${socket.username} waiting for opponent...`);
+      console.log(`⏳ Player ${socket.username} (${socket.id}) waiting for opponent...`);
     }
   });
 
@@ -110,7 +153,7 @@ io.on('connection', (socket) => {
     game.players[playerIndex].ships = ships;
     game.players[playerIndex].ready = true;
 
-    console.log(`Player ${socket.id} placed ships`);
+    console.log(`🚢 Player ${socket.username} (${socket.id}) placed ships`);
 
     // Notify opponent that this player is ready
     const opponentIndex = playerIndex === 0 ? 1 : 0;
@@ -122,7 +165,7 @@ io.on('connection', (socket) => {
       io.to(gameId).emit('gameStart', {
         currentTurn: game.currentTurn
       });
-      console.log(`Game ${gameId} started!`);
+      console.log(`🎯 Game ${gameId} started!`);
     }
   });
 
@@ -141,6 +184,7 @@ io.on('connection', (socket) => {
     const playerIndex = game.players.findIndex(p => p.id === socket.id);
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     const opponent = game.players[opponentIndex];
+    const shooter = game.players[playerIndex];
 
     const hit = opponent.ships.some(ship =>
       ship.positions.some(pos => pos.x === x && pos.y === y)
@@ -150,7 +194,8 @@ io.on('connection', (socket) => {
 
     // Track hits for scoring
     if (hit) {
-      game.players[playerIndex].hits += 1;
+      shooter.hits += 1;
+      console.log(`💥 ${shooter.username} hit at (${x}, ${y}) - Total hits: ${shooter.hits}`);
     }
 
     io.to(gameId).emit('shotResult', {
@@ -170,8 +215,7 @@ io.on('connection', (socket) => {
         io.to(gameId).emit('gameOver', {
           winner: socket.id
         });
-        console.log(`Game ${gameId} finished! Winner: ${socket.id}`);
-
+        
         // Calculate and update scores
         const winner = game.players[playerIndex];
         const loser = game.players[opponentIndex];
@@ -179,7 +223,9 @@ io.on('connection', (socket) => {
         const winnerScore = (winner.hits * 15) + 150; // Hits + Win bonus
         const loserScore = loser.hits * 15; // Only hits, no penalty for losing
 
-        console.log(`📊 Final scores - ${winner.username}: ${winner.hits} hits, +${winnerScore} | ${loser.username}: ${loser.hits} hits, +${loserScore}`);
+        console.log(`🏆 Game ${gameId} finished!`);
+        console.log(`   Winner: ${winner.username} - ${winner.hits} hits, +${winnerScore} points`);
+        console.log(`   Loser: ${loser.username} - ${loser.hits} hits, +${loserScore} points`);
 
         // Update scores in database
         updatePlayerScore(winner.username, winnerScore);
@@ -196,7 +242,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chatMessage', ({ message, gameId }) => {
-    console.log(`Chat: ${socket.username || socket.id} -> ${gameId}: "${message}"`);
+    console.log(`💬 Chat: ${socket.username || socket.id} -> ${gameId}: "${message}"`);
 
     if (!gameId) return;
 
@@ -213,10 +259,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('forfeit', (data) => {
-    console.log(`FORFEIT: Received forfeit from ${socket.id}`, data);
+    console.log(`🏳️ FORFEIT: Received forfeit from ${socket.username} (${socket.id})`, data);
 
     const gameId = socket.gameId || data?.gameId;
-    console.log(`FORFEIT: gameId from socket = ${socket.gameId}, from data = ${data?.gameId}, using = ${gameId}`);
 
     if (!gameId) {
       console.log('FORFEIT: No gameId found, exiting');
@@ -224,7 +269,6 @@ io.on('connection', (socket) => {
     }
 
     const game = games.get(gameId);
-    console.log(`FORFEIT: game exists = ${!!game}, status = ${game?.status}`);
 
     if (!game) {
       console.log('FORFEIT: Game not found, exiting');
@@ -236,25 +280,24 @@ io.on('connection', (socket) => {
       return;
     }
 
-    console.log(`Player ${socket.id} forfeited game ${gameId}`);
-
     // Determine opponent
     const playerIndex = game.players.findIndex(p => p.id === socket.id);
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     const forfeiter = game.players[playerIndex];
     const winner = game.players[opponentIndex];
 
-    console.log(`FORFEIT: Opponent is ${winner.id}, sending direct notification`);
+    console.log(`🏳️ ${forfeiter.username} forfeited. ${winner.username} wins!`);
 
-    // Notify opponent they won by forfeit - send directly to opponent's socket
+    // Notify opponent they won by forfeit
     io.to(winner.id).emit('opponentForfeited');
-    console.log(`Sent opponentForfeited event directly to ${winner.id}`);
 
     // Calculate and update scores for forfeit
     const forfeiterScore = -50; // Forfeit penalty
     const winnerScore = (winner.hits * 15) + 150; // Hits + Win bonus
 
-    console.log(`📊 Forfeit scores - ${forfeiter.username}: ${forfeiterScore} (penalty) | ${winner.username}: ${winner.hits} hits, +${winnerScore}`);
+    console.log(`📊 Forfeit scores:`);
+    console.log(`   ${forfeiter.username}: ${forfeiterScore} (penalty)`);
+    console.log(`   ${winner.username}: ${winner.hits} hits, +${winnerScore}`);
 
     // Update scores in database
     updatePlayerScore(forfeiter.username, forfeiterScore);
@@ -262,11 +305,10 @@ io.on('connection', (socket) => {
 
     // Mark game as finished
     game.status = 'finished';
-    console.log(`Game ${gameId} ended - ${winner.id} wins by forfeit`);
   });
 
   socket.on('disconnect', () => {
-    console.log('Player disconnected:', socket.id);
+    console.log('👋 Player disconnected:', socket.username || socket.id);
 
     const waitingIndex = waitingPlayers.findIndex(p => p.id === socket.id);
     if (waitingIndex !== -1) {
@@ -275,15 +317,35 @@ io.on('connection', (socket) => {
 
     if (socket.gameId) {
       const game = games.get(socket.gameId);
-      if (game) {
+      if (game && game.status === 'playing') {
+        // Player disconnected during active game - treat as forfeit
+        const playerIndex = game.players.findIndex(p => p.id === socket.id);
+        if (playerIndex !== -1) {
+          const opponentIndex = playerIndex === 0 ? 1 : 0;
+          const disconnectedPlayer = game.players[playerIndex];
+          const winner = game.players[opponentIndex];
+
+          console.log(`🔌 ${disconnectedPlayer.username} disconnected during game. ${winner.username} wins!`);
+
+          // Update scores - disconnecting player gets penalty, winner gets points
+          const disconnectPenalty = -50;
+          const winnerScore = (winner.hits * 15) + 150;
+
+          updatePlayerScore(disconnectedPlayer.username, disconnectPenalty);
+          updatePlayerScore(winner.username, winnerScore);
+
+          io.to(socket.gameId).emit('opponentDisconnected');
+        }
+      } else if (game) {
         io.to(socket.gameId).emit('opponentDisconnected');
-        games.delete(socket.gameId);
       }
+      games.delete(socket.gameId);
     }
   });
 });
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📡 FLASK_API_URL: ${process.env.FLASK_API_URL || 'http://127.0.0.1:5000 (default)'}`);
 });

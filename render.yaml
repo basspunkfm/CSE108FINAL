@@ -29,11 +29,9 @@ services:
     buildCommand: "npm install"
     startCommand: "node src/server.js"
     envVars:
+      # Use the public URL for the Flask API
       - key: FLASK_API_URL
-        fromService:
-          name: battleship-flask
-          type: web
-          property: hostport
+        value: "https://battleship-flask.onrender.com"
 
 databases:
   - name: battleship-db
