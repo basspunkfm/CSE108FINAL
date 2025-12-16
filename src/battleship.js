@@ -438,6 +438,8 @@ syncViewportSize();
                 turnText.text = '';
                 forfeitButtonBg.visible = false;
                 forfeitButtonText.visible = false;
+		backToMenuBg.visible = true;
+		backToMenuText.visible = true;
                 addChatMessage('🏳️ You have forfeited the battle.', 'system');
                 console.log('Forfeit sent, status updated');
             }
@@ -446,6 +448,34 @@ syncViewportSize();
 
     uiLayer.addChild(forfeitButtonBg);
     uiLayer.addChild(forfeitButtonText);
+
+    // Back to menu button
+    const backToMenuBg = new Graphics().roundRect(0, 0, 180, 50, 10).fill(0x3498db);
+    backToMenuBg.x = 760;
+    backToMenuBg.y = 25;
+    backToMenuBg.eventMode = 'static';
+    backToMenuBg.cursor = 'pointer';
+    backToMenuBg.visible = false;
+
+    const backToMenuText = new Text({
+        text: 'Back To Menu',
+	style: {
+	    fontSize: 22,
+	    fill: 0xffffff,
+	    fontWeight: 'bold'
+	}
+    });
+    backToMenuText.anchor.set(0.5);
+    backToMenuText.x = backToMenuBg.x +90;
+    backToMenuText.y = backToMenuBg.y + 25;
+    backToMenuText.visible = false;
+
+    backToMenuBg.on('pointerdown', () => {
+        goBackToMenu();
+    });
+
+    uiLayer.addChild(backToMenuBg);
+    uiLayer.addChild(backToMenuText);
 
     // --- PLACEMENT INSTRUCTIONS ---
     const instructionText = new Text({
@@ -679,6 +709,8 @@ syncViewportSize();
         turnText.text = '';
         forfeitButtonBg.visible = false;
         forfeitButtonText.visible = false;
+	backToMenuBg.visible = true;
+	backToMenuText.visible = true;
     });
 
     socket.on('opponentForfeited', () => {
@@ -695,6 +727,8 @@ syncViewportSize();
         forfeitButtonText.visible = false;
         console.log('Status updated to:', statusText.text);
         addChatMessage('🏳️ Opponent has forfeited the match. You win!', 'system');
+	backToMenuBg.visible = true;
+	backToMenuText.visible = true;
     });
 
     socket.on('opponentDisconnected', () => {
@@ -711,6 +745,17 @@ syncViewportSize();
             turnText.text = gameState.isMyTurn ? 'YOUR TURN - Click enemy grid to shoot!' : "OPPONENT'S TURN";
             turnText.style.fill = gameState.isMyTurn ? 0x27ae60 : 0xe74c3c;
         }
+    }
+
+    function goBackToMenu() {
+        const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+	
+	if (isLocalDev && window.location.port === '5173') {
+	    window.location.replace('http://localhost:5000/menu');
+	    return;
+	}
+
+	window.location.replace('/menu');
     }
 
     // --- AUDIO ---
