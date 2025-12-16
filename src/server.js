@@ -192,6 +192,23 @@ io.on('connection', (socket) => {
 
     opponent.grid[y][x] = hit ? 'hit' : 'miss';
 
+    let sunkShipPositions = null;
+  let sunkPlayerId = null;
+
+  if (hit) {
+    const hitShip = opponent.ships.find(ship =>
+      ship.positions.some(pos => pos.x === x && pos.y === y)
+    );
+
+    if (hitShip) {
+      const shipSunk = hitShip.positions.every(pos => opponent.grid[pos.y][pos.x] === 'hit');
+      if (shipSunk) {
+        sunkShipPositions = hitShip.positions;
+        sunkPlayerId = opponent.id; // the ship that sunk belongs to the defender
+      }
+    }
+  }
+
     // Track hits for scoring
     if (hit) {
       shooter.hits += 1;
@@ -202,7 +219,9 @@ io.on('connection', (socket) => {
       shooterId: socket.id,
       x,
       y,
-      hit
+      hit, 
+      sunkShipPositions, 
+      sunkPlayerId
     });
 
     if (hit) {

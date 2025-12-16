@@ -97,10 +97,20 @@ export class Grid {
     const cell = this.cells[y][x];
     cell.clear()
       .rect(0, 0, this.cellSize - 2, this.cellSize - 2)
-      .fill({ color: 0xe74c3c, alpha: 0.7 }) // Red with transparency
+      .fill({ color: 0xffea00, alpha: 0.7 }) // Yellow with transparency
       .stroke({ color: 0x0f3460, width: 1 });
     cell.state = 'hit';
   }
+
+  markSunk(x, y) {
+    const cell = this.cells[y][x];
+    cell.clear()
+      .rect(0, 0, this.cellSize - 2, this.cellSize - 2)
+      .fill({ color: 0xe74c3c, alpha: 0.85 }) // RED
+      .stroke({ color: 0x0f3460, width: 1 });
+    cell.state = 'sunk';
+  }
+  
 
   markMiss(x, y) {
     const cell = this.cells[y][x];

@@ -688,6 +688,16 @@ syncViewportSize();
                 addChatMessage(`💧 Opponent MISSED at (${data.x}, ${data.y})`, 'system');
             }
         }
+
+        if (Array.isArray(data.sunkShipPositions) && data.sunkShipPositions.length) {
+            const sunkIsMine = data.sunkPlayerId === socket.id;
+            const gridToUpdate = sunkIsMine ? playerGrid : enemyGrid;
+          
+            data.sunkShipPositions.forEach(pos => {
+              gridToUpdate.markSunk(pos.x, pos.y);
+            });
+          }
+          
     });
 
     socket.on('turnChange', (data) => {
@@ -761,6 +771,7 @@ syncViewportSize();
     // --- AUDIO ---
     const sound = new Howl({
         src: ['/audio/oceanBg.mp3'],
+        volume: 0.1   // 20% volume
     });
 
     sound.play();
