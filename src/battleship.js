@@ -818,40 +818,48 @@ syncViewportSize();
     function isValidPlacement(ship, gridX, gridY) {
         // Check bounds
         if (ship.isVertical) {
-            if (gridX < 0 || gridX >= 10 || gridY < 0 || gridY + ship.length > 10) {
-                return false;
-            }
+            if (gridX < 0 || gridX >= 10 || gridY < 0 || gridY + ship.length > 10) return false;
         } else {
-            if (gridX < 0 || gridX + ship.length > 10 || gridY < 0 || gridY >= 10) {
-                return false;
-            }
+            if (gridX < 0 || gridX + ship.length > 10 || gridY < 0 || gridY >= 10) return false;
         }
 
-        // Check for overlaps with other placed ships
-        for (let otherShip of gameState.placementShips) {
-            if (otherShip === ship || !otherShip.isPlaced) continue;
+       // Check for overlaps + adjacency with other placed ships
+       for (let otherShip of gameState.placementShips) {
+           if (otherShip === ship || !otherShip.isPlaced) continue;
 
-            const otherPositions = [];
-            for (let i = 0; i < otherShip.length; i++) {
-                if (otherShip.isVertical) {
-                    otherPositions.push({ x: otherShip.gridX, y: otherShip.gridY + i });
-                } else {
-                    otherPositions.push({ x: otherShip.gridX + i, y: otherShip.gridY });
-                }
-            }
+           const otherPositions = [];
+           for (let j = 0; j < otherShip.length; j++) {
+               if (otherShip.isVertical) {
+                   otherPositions.push({ x: otherShip.gridX, y: otherShip.gridY + j });
+               } else {
+                   otherPositions.push({ x: otherShip.gridX + j, y: otherShip.gridY });
+               }
+           }
 
-            for (let i = 0; i < ship.length; i++) {
-                const newX = ship.isVertical ? gridX : gridX + i;
-                const newY = ship.isVertical ? gridY + i : gridY;
+           for (let i = 0; i < ship.length; i++) {
+               const newX = ship.isVertical ? gridX : gridX + i;
+               const newY = ship.isVertical ? gridY + i : gridY;
 
-                if (otherPositions.some(pos => pos.x === newX && pos.y === newY)) {
-                    return false;
-                }
-            }
-        }
+               // Overlap check (your existing check)
+               if (otherPositions.some(pos => pos.x === newX && pos.y === newY)) return false;
 
-        return true;
+               // Adjacency check (including diagonals): any neighbor occupied => invalid
+               for (let dx = -1; dx <= 1; dx++) {
+                   for (let dy = -1; dy <= 1; dy++) {
+                       const nx = newX + dx;
+                       const ny = newY + dy;
+
+                       if (nx < 0 || nx >= 10 || ny < 0 || ny >= 10) continue;
+
+                       if (otherPositions.some(pos => pos.x === nx && pos.y === ny)) return false;
+                   }
+               }
+           }
+       }
+
+       return true;
     }
+
 
     function placeShipOnGrid(ship, gridX, gridY) {
         ship.gridX = gridX;
