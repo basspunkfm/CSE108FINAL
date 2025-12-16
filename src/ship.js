@@ -75,6 +75,10 @@ export class Ship {
         const pos = e.global;
         this.container.x = pos.x - this.dragOffset.x;
         this.container.y = pos.y - this.dragOffset.y;
+
+	if (this.onDragStartCallback) {
+	    this.onDragStartCallback(this, 'dragmove');
+	}
         console.log(`Dragging ${this.name} to (${this.container.x}, ${this.container.y})`);
       }
     });

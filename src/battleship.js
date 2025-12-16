@@ -336,6 +336,10 @@ syncViewportSize();
     turnText.y = 70;
     uiLayer.addChild(turnText);
 
+    const previewLayer = new Graphics();
+    previewLayer.visible = false;
+    app.stage.addChild(previewLayer);
+
     // --- FIND GAME BUTTON (HIDDEN - Auto-matchmaking enabled) ---
     const buttonBg = new Graphics()
         .roundRect(0, 0, 180, 50, 10)
@@ -768,6 +772,74 @@ syncViewportSize();
 	window.location.replace('/menu');
     }
 
+    function updatePlacementPreview(ship) {
+        const gridOffsetX = playerGrid.container.x + 30;
+        const gridOffsetY = playerGrid.container.y + 30;
+
+        const gridX = Math.floor((ship.container.x - gridOffsetX) / cellSize);
+        const gridY = Math.floor((ship.container.y - gridOffsetY) / cellSize);
+
+        // Hide if not over/near the grid (keeps it from flickering)
+        if (gridX < -1 || gridX > 10 || gridY < -1 || gridY > 10) {
+            previewLayer.clear();
+            previewLayer.visible = false;
+            return;
+        }
+
+        const isOk = isValidPlacement(ship, gridX, gridY);
+	const color = isOk ? 0x2ecc71 : 0xe74c3c;
+	
+	const footprint = [];
+	for (let i = 0; i < ship.length; i++) {
+	    const x = ship.isVertical ? gridX : gridX + i;
+	    const y = ship.isVertical ? gridY + i : gridY;
+	    footprint.push({ x, y });
+	}
+	
+	const footprintKey = new Set(footprint.map(p => `${p.x},${p.y}`));
+	const haloKey = new Set();
+
+	for (const p of footprint) {
+	    for (let dx = -1; dx <= 1; dx++) {
+	        for (let dy = -1; dy <= 1; dy++) {
+		    const nx = p.x + dx;
+		    const ny = p.y + dy;
+
+		    if (nx < 0 || nx >= 10 || ny < 0 || ny >= 10) continue;
+		    
+		    const k = `${nx},${ny}`;
+		    if (footprintKey.has(k)) continue;
+
+		    haloKey.add(k);
+		}
+	    }
+	}
+
+        previewLayer.clear();
+        previewLayer.visible = true;
+
+	for (const k of haloKey) {
+	    const [xStr, yStr] = k.split(',');
+	    const x = Number(xStr);
+	    const y = Number(yStr);
+	    
+	    const px = gridOffsetX + x * cellSize;
+	    const py = gridOffsetY + y * cellSize;
+	   
+	    previewLayer.rect(px + 1, py + 1, cellSize - 2, cellSize - 2).stroke({ color, width: 1, alpha: 0.80 });
+	}
+
+        // Draw footprint on top (thicker outline)
+  	for (const p of footprint) {
+            if (p.x < 0 || p.x >= 10 || p.y < 0 || p.y >= 10) continue;
+
+            const px = gridOffsetX + p.x * cellSize;
+            const py = gridOffsetY + p.y * cellSize;
+
+            previewLayer.rect(px + 1, py + 1, cellSize - 2, cellSize - 2).stroke({ color, width: 3 });
+        }
+    }
+
     // --- AUDIO ---
     const sound = new Howl({
         src: ['/audio/oceanBg.mp3'],
@@ -942,12 +1014,22 @@ syncViewportSize();
 
     // --- DRAG HANDLERS ---
     function onShipDragStart(ship, eventType) {
+        if (eventType === 'dragstart') {
+            previewLayer.clear();
+            previewLayer.visible = true;
+            updatePlacementPreview(ship);
+            return;
+        }
+
+        if (eventType === 'dragmove') {
+            updatePlacementPreview(ship);
+            return;
+        }
+
         if (eventType === 'dragend') {
-            // Drag ended - handle drop
+            previewLayer.clear();
+            previewLayer.visible = false;
             handleShipDrop(ship);
-        } else if (eventType === 'dragstart') {
-            // Drag started
-            console.log(`Started dragging ${ship.name}`);
         }
     }
 
