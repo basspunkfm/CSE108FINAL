@@ -20,7 +20,8 @@
     "howler": "^2.2.4",
     "pixi.js": "^8.14.3",
     "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "whitenoise": "^0.0.1"
   },
   "devDependencies": {
     "vite": "^7.2.6"

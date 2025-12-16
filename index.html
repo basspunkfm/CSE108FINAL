@@ -5,10 +5,17 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <title>Battleship Game</title>
         <style>
-            body {
+            html, body {
                 margin: 0;
+                width: 100%;
+                height: 100%;
                 overflow: hidden;
+
+            canvas{ 
+                display: block;
             }
+}
+
 
             #chat-container {
                 position: fixed;
@@ -147,10 +154,36 @@
             #chat-send-btn:active {
                 background: #1e8449;
             }
+
+            #chat-container {
+    /* keep your existing styles */
+    min-width: 280px;
+    max-width: 75vw;
+}
+
+    /* draggable vertical handle on the left edge of the chat panel */
+    #chat-resize-handle {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+
+        /* make it easy to grab */
+        left: -6px;
+        width: 12px;
+
+        cursor: col-resize;
+        z-index: 1001;
+    }
+
+    #chat-resize-handle:hover {
+        background: rgba(39, 174, 96, 0.25);
+    }
+
         </style>
     </head>
     <body>
         <div id="chat-container">
+            <div id="chat-resize-handle" aria-hidden="true"></div>
             <div id="chat-header">BATTLE COMMUNICATIONS</div>
             <div id="chat-messages"></div>
             <div id="chat-input-container">

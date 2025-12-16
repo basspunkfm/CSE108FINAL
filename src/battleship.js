@@ -32,6 +32,42 @@ import { io } from 'socket.io-client';
     const chatInput = document.getElementById('chat-input');
     const chatSendBtn = document.getElementById('chat-send-btn');
 
+        // --- Chat panel resize (drag left edge) ---
+    const chatContainer = document.getElementById('chat-container');
+    const chatResizeHandle = document.getElementById('chat-resize-handle');
+
+    if (chatContainer && chatResizeHandle) {
+        chatResizeHandle.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+
+            const startX = e.clientX;
+            const startWidth = chatContainer.getBoundingClientRect().width;
+
+            chatResizeHandle.setPointerCapture(e.pointerId);
+
+            const onMove = (ev) => {
+                // dragging left increases width; dragging right decreases width
+                const dx = startX - ev.clientX;
+                let newWidth = startWidth + dx;
+
+                const minW = 280;
+                const maxW = Math.floor(window.innerWidth * 0.75);
+
+                newWidth = Math.max(minW, Math.min(maxW, newWidth));
+                chatContainer.style.width = `${newWidth}px`;
+            };
+
+            const onUp = () => {
+                document.removeEventListener('pointermove', onMove);
+                document.removeEventListener('pointerup', onUp);
+            };
+
+            document.addEventListener('pointermove', onMove);
+            document.addEventListener('pointerup', onUp);
+        });
+    }
+
+
     // Chat functions
     function addChatMessage(text, type = 'system', sender = '') {
         const messageDiv = document.createElement('div');
@@ -234,10 +270,42 @@ import { io } from 'socket.io-client';
     bgLayer.addChild(bgSprite);
 
     // Make background adaptive to window resize
-    window.addEventListener('resize', () => {
-        bgSprite.width = app.screen.width;
-        bgSprite.height = app.screen.height;
-    });
+    // --- Make background + renderer adapt to zoom + viewport changes ---
+let __lastVW = 0;
+let __lastVH = 0;
+
+function syncViewportSize() {
+    const vv = window.visualViewport;
+
+    // visualViewport tracks zoom better than window.innerWidth/innerHeight
+    const w = Math.round(vv ? vv.width : window.innerWidth);
+    const h = Math.round(vv ? vv.height : window.innerHeight);
+
+    // Avoid unnecessary work every tick
+    if (w === __lastVW && h === __lastVH) return;
+    __lastVW = w;
+    __lastVH = h;
+
+    // Ensure the renderer/canvas matches the visible viewport
+    app.renderer.resize(w, h);
+
+    // Ensure the tiling background covers the entire canvas
+    bgSprite.width = w;
+    bgSprite.height = h;
+}
+
+// Catch normal resizes
+window.addEventListener('resize', syncViewportSize);
+
+// Catch zoom/viewport changes (this is the key)
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncViewportSize);
+    window.visualViewport.addEventListener('scroll', syncViewportSize);
+}
+
+// Run once at startup
+syncViewportSize();
+
 
     app.ticker.add(() => {
         bgSprite.tilePosition.x -= 1;
