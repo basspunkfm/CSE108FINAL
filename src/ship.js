@@ -1,4 +1,3 @@
-
 import { Graphics, Container } from 'pixi.js';
 
 export class Ship {
@@ -108,10 +107,28 @@ export class Ship {
       }
     });
 
-    this.container.on('rightdown', (e) => {
-      console.log(`Ship ${this.name} right-clicked! Rotating...`);
-      this.rotate(this.onRotateCallback);
+    // Double-click to rotate
+    let lastTapMs = 0;
+    const doubleTapWindowMs = 300;
+
+    this.container.on('pointertap', (e) => {
+        // Only allow rotation if ship is placed
+        if (!this.isPlaced) return;
+
+        if (this.isDragging) return;
+
+        if (typeof e.button === 'number' && e.button !== 0) return;
+
+        const now = performance.now();
+        const isDoubleTap = (now - lastTapMs) <= doubleTapWindowMs;
+        lastTapMs = now;
+
+        if (!isDoubleTap) return;
+
+        console.log(`Ship ${this.name} double-clicked! Rotating...`);
+        this.rotate(this.onRotateCallback);
     });
+
 
     this.container.on('pointerover', () => {
       console.log(`Mouse over ship ${this.name}`);

@@ -449,7 +449,7 @@ syncViewportSize();
 
     // --- PLACEMENT INSTRUCTIONS ---
     const instructionText = new Text({
-        text: 'Drag ships to YOUR FLEET grid. Right-click placed ships to rotate.',
+        text: 'Drag ships to YOUR FLEET grid. Double-click placed ships to rotate.',
         style: {
             fontSize: 18,
             fill: 0xffffff,
